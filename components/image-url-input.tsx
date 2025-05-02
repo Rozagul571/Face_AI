@@ -6,6 +6,8 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Loader2, X } from "lucide-react"
+import { Icon3D } from "@/components/3d-icons"
+import { motion } from "framer-motion"
 
 interface ImageUrlInputProps {
   onImageLoaded: (imageDataUrl: string) => void
@@ -79,8 +81,13 @@ export function ImageUrlInput({ onImageLoaded }: ImageUrlInputProps) {
 
       {error && <p className="text-sm text-red-500">{error}</p>}
 
-      {preview && (
-        <div className="relative">
+      {preview ? (
+        <motion.div
+          className="relative"
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.3 }}
+        >
           <img
             src={preview || "/placeholder.svg"}
             alt="Preview"
@@ -92,6 +99,17 @@ export function ImageUrlInput({ onImageLoaded }: ImageUrlInputProps) {
           >
             <X className="h-5 w-5 text-gray-700" />
           </button>
+        </motion.div>
+      ) : (
+        <div className="flex flex-col items-center justify-center h-64 bg-gray-100 rounded-lg border border-gray-300 border-dashed">
+          <motion.div
+            className="w-24 h-24 flex items-center justify-center mb-4"
+            whileHover={{ scale: 1.1 }}
+            transition={{ type: "spring", stiffness: 400, damping: 10 }}
+          >
+            <Icon3D type="url" size={96} />
+          </motion.div>
+          <p className="text-gray-500">Enter a URL above to load an image</p>
         </div>
       )}
     </div>

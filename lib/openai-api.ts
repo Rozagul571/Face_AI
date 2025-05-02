@@ -18,46 +18,50 @@ export async function generateChatResponse(messages: ChatMessage[]): Promise<str
     const userMessage = messages[messages.length - 1].content.toLowerCase()
 
     if (userMessage.includes("red") || userMessage.includes("pimple")) {
-      return "Based on your description of red pimples, it sounds like you have inflammatory acne. I recommend using a gentle cleanser with salicylic acid twice daily, followed by a non-comedogenic moisturizer. For spot treatment, try a product with benzoyl peroxide (2.5-5%) applied only to the affected areas at night."
+      return `Based on your description of red pimples, it sounds like you have inflammatory acne. Here's a comprehensive treatment plan:
+
+• Daily Cleansing: Use a gentle cleanser with salicylic acid twice daily. Avoid harsh soaps that can irritate your skin further.
+
+• Targeted Treatment: Apply a 2.5-5% benzoyl peroxide product only to affected areas at night. This will kill acne-causing bacteria without over-drying your skin.
+
+• Hydration: Use a non-comedogenic moisturizer to maintain your skin barrier. Look for ingredients like ceramides and hyaluronic acid.
+
+• Sun Protection: Always apply SPF 30+ during the day, even if it's cloudy. Sun exposure can worsen inflammation and cause post-acne hyperpigmentation.
+
+• Diet Considerations: Consider reducing dairy and high-glycemic foods, which have been linked to inflammatory acne in some studies.
+
+• Hands Off Policy: Avoid touching or picking at your pimples as this can lead to scarring and spread bacteria.
+
+If you don't see improvement within 4-6 weeks, consider consulting a dermatologist for prescription options like topical antibiotics or retinoids.`
     }
 
     if (userMessage.includes("oily")) {
-      return "For oily skin, I recommend using a foaming cleanser with ingredients like niacinamide or salicylic acid. Use a lightweight, oil-free moisturizer, and consider incorporating a clay mask 1-2 times per week. Avoid heavy, occlusive products that could clog your pores."
+      return `For oily skin, I recommend a comprehensive approach targeting excess sebum production:
+
+• Morning Cleansing: Use a foaming cleanser containing salicylic acid or glycolic acid to control oil and prevent pore clogging.
+
+• Oil-Control Toner: Apply an alcohol-free toner with ingredients like witch hazel, niacinamide, or zinc PCA to regulate sebum.
+
+• Lightweight Hydration: Use a gel-based moisturizer with hyaluronic acid. Many people with oily skin skip moisturizer, but this actually triggers more oil production.
+
+• Mattifying Sunscreen: Choose an oil-free, matte-finish SPF 30+ sunscreen formulated for oily skin.
+
+• Weekly Treatments: Incorporate a clay mask 1-2 times weekly to absorb excess oil. Kaolin or bentonite clay works well.
+
+• Blotting Papers: Keep oil-absorbing sheets handy for midday touch-ups without adding more product to your skin.
+
+• Ingredients to Look For: Niacinamide (regulates oil), salicylic acid (unclogs pores), zinc (anti-inflammatory), and hyaluronic acid (non-greasy hydration).
+
+• Ingredients to Avoid: Coconut oil, cocoa butter, petroleum, and heavy silicones that can trap oil and clog pores.
+
+Remember that extremely oily skin can sometimes indicate dehydration, as your skin produces more oil to compensate for lack of moisture.`
     }
 
     if (userMessage.includes("product") || userMessage.includes("recommend")) {
-      return "For acne-prone skin, I recommend a simple routine: 1) Gentle cleanser like CeraVe Foaming Cleanser, 2) Treatment with either The Ordinary Niacinamide 10% + Zinc 1% or Paula's Choice 2% BHA Liquid Exfoliant, 3) Lightweight moisturizer like Neutrogena Hydro Boost, and 4) Sunscreen like La Roche-Posay Anthelios. Start with these basics before adding more products."
-    }
+      return `For acne-prone skin, here's a comprehensive product routine I recommend:
 
-    // Default response
-    return "Thank you for sharing your skin concerns. Based on what you've described, I recommend focusing on a consistent skincare routine with gentle cleansing, targeted treatments, and proper hydration. Would you like more specific product recommendations or advice on particular skin issues?"
+• Gentle Cleanser: 
+  - CeraVe Foaming Facial Cleanser ($15) - Contains ceramides and niacinamide
+  - La Roche-Posay Toleriane Purifying Foaming Cleanser ($16) - Non-drying formula
 
-    // Real implementation would look something like this:
-    /*
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          {
-            role: "system",
-            content: "You are DermAI, a dermatologist assistant specialized in acne treatment. Provide helpful, accurate skincare advice based on user descriptions. Focus on evidence-based treatments and affordable product recommendations available in Uzbekistan."
-          },
-          ...messages
-        ],
-        temperature: 0.7,
-      }),
-    });
-    
-    const data = await response.json();
-    return data.choices[0].message.content;
-    */
-  } catch (error) {
-    console.error("Error generating chat response:", error)
-    throw new Error("Failed to generate response")
-  }
-}
+• Treatment Serums (choose one):

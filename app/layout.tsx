@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import { Inter, Montserrat } from "next/font/google"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
+import { MouseTrail, CustomCursor } from "@/components/mouse-effects"
 
 const inter = Inter({
   subsets: ["latin"],
@@ -30,6 +31,8 @@ export default function RootLayout({
       <body className={`${inter.variable} ${montserrat.variable} font-sans`}>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
           {children}
+          <MouseTrail />
+          <CustomCursor />
         </ThemeProvider>
       </body>
     </html>
