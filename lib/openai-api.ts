@@ -1,4 +1,4 @@
-// This file would contain the actual implementation for the OpenAI API integration
+// This file contains the implementation for the OpenAI API integration
 // For the MVP, we're using mock data, but this is where the real API calls would go
 
 export interface ChatMessage {
@@ -65,3 +65,51 @@ Remember that extremely oily skin can sometimes indicate dehydration, as your sk
   - La Roche-Posay Toleriane Purifying Foaming Cleanser ($16) - Non-drying formula
 
 • Treatment Serums (choose one):
+  - The Ordinary Niacinamide 10% + Zinc 1% ($6) - Reduces sebum and inflammation
+  - Paula's Choice 2% BHA Liquid Exfoliant ($30) - Unclogs pores with salicylic acid
+  - The Inkey List Beta Hydroxy Acid ($11) - Budget-friendly BHA option
+
+• Spot Treatment:
+  - La Roche-Posay Effaclar Duo ($30) - Contains benzoyl peroxide and LHA
+  - COSRX Acne Pimple Master Patches ($6) - Hydrocolloid patches for active pimples
+
+• Moisturizer:
+  - Neutrogena Hydro Boost Gel-Cream ($16) - Lightweight, oil-free hydration
+  - CeraVe PM Facial Moisturizing Lotion ($16) - Contains niacinamide and ceramides
+
+• Sunscreen:
+  - EltaMD UV Clear SPF 46 ($37) - Contains niacinamide, great for acne-prone skin
+  - La Roche-Posay Anthelios Clear Skin SPF 60 ($20) - Oil-free, won't clog pores
+
+Remember to introduce new products one at a time, with at least a week between additions to monitor for any adverse reactions.`
+    }
+
+    // Default response if no specific keywords are matched
+    return `Thank you for your message. I'm DermAI, your skincare assistant. I can help with acne concerns, product recommendations, and skincare routines.
+
+To provide the most helpful advice, could you tell me more about:
+• Your skin type (dry, oily, combination, sensitive)
+• Specific skin concerns you're experiencing
+• Current skincare products you're using
+• Any treatments you've tried before
+
+The more details you provide, the better I can tailor my recommendations to your needs.`
+  } catch (error) {
+    console.error("Error generating chat response:", error)
+    return "I'm sorry, I encountered an error while processing your request. Please try again."
+  }
+}
+
+// Function to prepare for future OpenAI API integration
+export async function prepareOpenAIRequest(messages: ChatMessage[]) {
+  // This would be used when integrating with the actual OpenAI API
+  return {
+    model: "gpt-4o",
+    messages: messages.map((msg) => ({
+      role: msg.role,
+      content: msg.content,
+    })),
+    temperature: 0.7,
+    max_tokens: 1000,
+  }
+}
