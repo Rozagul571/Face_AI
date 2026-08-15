@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -21,13 +21,10 @@ export default function AnalyzePage() {
   const [language, setLanguage] = useState<"en" | "uz">("en")
   const [error, setError] = useState<string | null>(null)
 
-  // Get language from localStorage when component mounts
-  useState(() => {
+  useEffect(() => {
     const storedLanguage = localStorage.getItem("language") as "en" | "uz" | null
-    if (storedLanguage) {
-      setLanguage(storedLanguage)
-    }
-  })
+    if (storedLanguage) setLanguage(storedLanguage)
+  }, [])
 
   const handleAnalyze = async () => {
     if (!image) return

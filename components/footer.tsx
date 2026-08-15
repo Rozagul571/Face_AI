@@ -6,10 +6,10 @@ import { Instagram, Twitter, Facebook, Youtube, Mail } from "lucide-react"
 
 export function Footer() {
   return (
-    <footer className="bg-purple-900 text-white pt-12 pb-6">
+    <footer className="bg-purple-900 text-white pt-8 md:pt-12 pb-6">
       <div className="container mx-auto px-4">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
-          <div className="space-y-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8 mb-8">
+          <div className="col-span-2 md:col-span-1 space-y-4">
             <div className="flex items-center space-x-2">
               <div className="w-10 h-10 rounded-full bg-gradient-to-r from-pink-500 to-purple-600 flex items-center justify-center">
                 <span className="text-white font-bold text-lg">D</span>

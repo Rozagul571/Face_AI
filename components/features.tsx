@@ -136,21 +136,21 @@ export function Features() {
   const currentContent = content[language]
 
   return (
-    <section className="py-20 bg-white">
+    <section className="py-10 md:py-20 bg-white">
       <div className="container mx-auto px-4">
-        <div className="text-center mb-20">
+        <div className="text-center mb-10 md:mb-20">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5 }}
           >
-            <h2 className="text-4xl md:text-5xl font-bold mb-6 text-purple-900 font-heading">{currentContent.title}</h2>
-            <p className="text-xl text-gray-700 max-w-3xl mx-auto">{currentContent.subtitle}</p>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-4 md:mb-6 text-purple-900 font-heading">{currentContent.title}</h2>
+            <p className="text-base sm:text-lg md:text-xl text-gray-700 max-w-3xl mx-auto">{currentContent.subtitle}</p>
           </motion.div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-10">
           {currentContent.features.map((feature, index) => (
             <motion.div
               key={index}
@@ -161,19 +161,19 @@ export function Features() {
             >
               <Link href={feature.link}>
                 <Card className="h-full border-3 border-purple-100 hover:border-purple-300 transition-all duration-300 hover:shadow-xl overflow-hidden group">
-                  <CardContent className="p-8">
-                    <div className="mb-6 relative">
+                  <CardContent className="p-4 sm:p-6 md:p-8">
+                    <div className="mb-4 sm:mb-6 relative">
                       <div
-                        className={`w-20 h-20 rounded-2xl bg-gradient-to-br ${feature.color} flex items-center justify-center text-white shadow-md group-hover:scale-110 transition-transform duration-300`}
+                        className={`w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-2xl bg-gradient-to-br ${feature.color} flex items-center justify-center text-white shadow-md group-hover:scale-110 transition-transform duration-300`}
                       >
                         {feature.icon}
                       </div>
                     </div>
-                    <h3 className="text-2xl font-bold mb-3 text-purple-900 group-hover:text-purple-700 transition-colors">
+                    <h3 className="text-lg sm:text-xl md:text-2xl font-bold mb-2 sm:mb-3 text-purple-900 group-hover:text-purple-700 transition-colors">
                       {feature.title}
                     </h3>
-                    <p className="text-lg text-gray-700 mb-5">{feature.description}</p>
-                    <div className="flex items-center text-md font-medium text-purple-600 group-hover:translate-x-1 transition-transform duration-300">
+                    <p className="text-sm sm:text-base md:text-lg text-gray-700 mb-3 sm:mb-5">{feature.description}</p>
+                    <div className="flex items-center text-sm sm:text-md font-medium text-purple-600 group-hover:translate-x-1 transition-transform duration-300">
                       <span>Learn more</span>
                       <ArrowRight className="ml-2 h-5 w-5" />
                     </div>
