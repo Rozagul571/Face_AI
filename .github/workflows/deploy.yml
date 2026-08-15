@@ -1,0 +1,94 @@
+name: Deploy to Server
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install & Build
+        run: |
+          npm install
+          npm run build
+
+      - name: Deploy to Server via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: 16.171.0.251
+          username: ubuntu
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          timeout: 300s
+          script: |
+            set -e
+
+            # Swap memory (t3.micro uchun)
+            if [ ! -f /swapfile ]; then
+              sudo fallocate -l 2G /swapfile
+              sudo chmod 600 /swapfile
+              sudo mkswap /swapfile
+              sudo swapon /swapfile
+            fi
+
+            # Node.js o'rnatish
+            if ! command -v node &>/dev/null; then
+              curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+              sudo apt-get install -y nodejs
+            fi
+
+            # PM2 o'rnatish
+            if ! command -v pm2 &>/dev/null; then
+              sudo npm install -g pm2
+            fi
+
+            # Eski loyihalarni o'chirish
+            pm2 stop all 2>/dev/null || true
+            pm2 delete all 2>/dev/null || true
+            sudo rm -rf /home/ubuntu/smart-guardian /home/ubuntu/ivms /home/ubuntu/face-ai
+
+            # Yangi loyiha
+            cd /home/ubuntu
+            git clone https://github.com/Rozagul571/Face_AI.git face-ai || (cd face-ai && git pull origin main)
+            cd face-ai
+            npm install
+            NODE_OPTIONS="--max-old-space-size=512" npm run build
+
+            # Nginx
+            sudo tee /etc/nginx/sites-available/face-ai > /dev/null << 'NGINX'
+            server {
+                listen 80 default_server;
+                listen [::]:80 default_server;
+                server_name _;
+                client_max_body_size 20M;
+                location / {
+                    proxy_pass http://127.0.0.1:3000;
+                    proxy_http_version 1.1;
+                    proxy_set_header Upgrade $http_upgrade;
+                    proxy_set_header Connection 'upgrade';
+                    proxy_set_header Host $host;
+                    proxy_set_header X-Real-IP $remote_addr;
+                    proxy_cache_bypass $http_upgrade;
+                }
+            }
+            NGINX
+            sudo rm -f /etc/nginx/sites-enabled/*
+            sudo ln -sf /etc/nginx/sites-available/face-ai /etc/nginx/sites-enabled/face-ai
+            sudo nginx -t && sudo systemctl reload nginx
+
+            # PM2 start
+            pm2 start npm --name "face-ai" -- start
+            pm2 save
+            sudo env PATH=$PATH:/usr/bin pm2 startup systemd -u ubuntu --hp /home/ubuntu 2>/dev/null | tail -1 | bash || true
+
+            echo "✓ Deployed at http://16.171.0.251"
