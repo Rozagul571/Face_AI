@@ -67,9 +67,11 @@ export function Navbar() {
       <div className="container mx-auto px-4 py-3">
         <div className="flex items-center justify-between">
           <Link href="/" className="flex items-center space-x-2" onClick={closeMenu}>
-            <div className="w-10 h-10 rounded-full bg-gradient-to-r from-pink-500 to-purple-600 flex items-center justify-center">
-              <span className="text-white font-bold text-lg">D</span>
-            </div>
+            <img
+              src="/derion-logo.jpg"
+              alt="Derion AI"
+              className="w-10 h-10 rounded-full object-cover border-2 border-purple-200"
+            />
             <span className="font-bold text-xl text-purple-900">Derion AI</span>
           </Link>
 

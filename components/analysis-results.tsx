@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -12,273 +11,205 @@ import Link from "next/link"
 import { motion } from "framer-motion"
 import { acneTypeColors, acneTypeDescriptions } from "@/lib/roboflow-api"
 
+interface Prediction {
+  x: number
+  y: number
+  width: number
+  height: number
+  class: string
+  confidence: number
+  points?: Array<{ x: number; y: number }>
+}
+
 interface AnalysisResultsProps {
   results: {
-    predictions: Array<{
-      x: number
-      y: number
-      width: number
-      height: number
-      class: string
-      confidence: number
-    }>
+    predictions: Prediction[]
     severity: "mild" | "moderate" | "severe"
-    percentages: {
-      [key: string]: number
-    }
+    percentages: { [key: string]: number }
   }
   image: string | null
 }
 
 export function AnalysisResults({ results, image }: AnalysisResultsProps) {
-  const [showDots, setShowDots] = useState(false)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [language, setLanguage] = useState<"en" | "uz">("en")
-  const [imageSize, setImageSize] = useState({ width: 500, height: 500 })
 
   useEffect(() => {
-    // Get language from localStorage or other state management
-    const storedLanguage = localStorage.getItem("language") as "en" | "uz" | null
-    if (storedLanguage) {
-      setLanguage(storedLanguage)
-    }
+    const lang = localStorage.getItem("language") as "en" | "uz" | null
+    if (lang) setLanguage(lang)
+  }, [])
 
-    if (image && canvasRef.current) {
-      const img = new Image()
-      img.crossOrigin = "anonymous"
-      img.onload = () => {
-        setImageSize({ width: img.width, height: img.height })
-        drawImageWithPredictions(img)
-      }
-      img.src = image
-    }
-  }, [image, results, showDots])
+  useEffect(() => {
+    if (!image || !canvasRef.current) return
+    const img = new Image()
+    img.crossOrigin = "anonymous"
+    img.onload = () => drawCanvas(img)
+    img.src = image
+  }, [image, results])
 
-  const drawImageWithPredictions = (img: HTMLImageElement) => {
-    if (!canvasRef.current) return
-
-    const canvas = canvasRef.current
-    const ctx = canvas.getContext("2d")
-    if (!ctx) return
-
-    // Set canvas dimensions to match image
+  const drawCanvas = (img: HTMLImageElement) => {
+    const canvas = canvasRef.current!
+    const ctx = canvas.getContext("2d")!
     canvas.width = img.width
     canvas.height = img.height
+    ctx.drawImage(img, 0, 0)
 
-    // Draw the image
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-
-    // Draw predictions
     results.predictions.forEach((pred) => {
-      const color = acneTypeColors[pred.class as keyof typeof acneTypeColors] || "#ff0000"
+      const cx = pred.x
+      const cy = pred.y
+      const hw = pred.width / 2
+      const hh = pred.height / 2
 
-      // Draw bounding box
-      ctx.strokeStyle = color
-      ctx.lineWidth = 3
-      ctx.strokeRect(pred.x, pred.y, pred.width, pred.height)
-
-      // Draw label
-      ctx.fillStyle = color
-      ctx.fillRect(pred.x, pred.y - 25, 120, 25)
-      ctx.fillStyle = "white"
-      ctx.font = "14px Arial"
-      ctx.fillText(`${pred.class} ${Math.round(pred.confidence * 100)}%`, pred.x + 5, pred.y - 7)
-
-      // Draw dots if enabled
-      if (showDots) {
-        ctx.fillStyle = color
-        ctx.beginPath()
-        ctx.arc(pred.x + pred.width / 2, pred.y + pred.height / 2, 8, 0, Math.PI * 2)
-        ctx.fill()
-      }
-    })
-
-    // Connect dots if enabled
-    if (showDots && results.predictions.length > 1) {
-      ctx.strokeStyle = "rgba(255, 0, 0, 0.5)"
-      ctx.lineWidth = 2
+      // Semi-transparent red fill overlay
+      ctx.fillStyle = "rgba(255, 30, 30, 0.18)"
       ctx.beginPath()
-
-      const firstPred = results.predictions[0]
-      ctx.moveTo(firstPred.x + firstPred.width / 2, firstPred.y + firstPred.height / 2)
-
-      for (let i = 1; i < results.predictions.length; i++) {
-        const pred = results.predictions[i]
-        ctx.lineTo(pred.x + pred.width / 2, pred.y + pred.height / 2)
+      if (pred.points && pred.points.length > 2) {
+        ctx.moveTo(pred.points[0].x, pred.points[0].y)
+        pred.points.forEach((pt) => ctx.lineTo(pt.x, pt.y))
+        ctx.closePath()
+      } else {
+        ctx.ellipse(cx, cy, hw, hh, 0, 0, Math.PI * 2)
       }
+      ctx.fill()
 
-      ctx.closePath()
+      // Red outline / contour
+      ctx.strokeStyle = "#FF2222"
+      ctx.lineWidth = 2.5
+      ctx.beginPath()
+      if (pred.points && pred.points.length > 2) {
+        ctx.moveTo(pred.points[0].x, pred.points[0].y)
+        pred.points.forEach((pt) => ctx.lineTo(pt.x, pt.y))
+        ctx.closePath()
+      } else {
+        ctx.ellipse(cx, cy, hw, hh, 0, 0, Math.PI * 2)
+      }
       ctx.stroke()
-    }
+
+      // Pulsing red dot at center
+      // outer glow
+      ctx.beginPath()
+      ctx.arc(cx, cy, 12, 0, Math.PI * 2)
+      ctx.fillStyle = "rgba(255, 0, 0, 0.25)"
+      ctx.fill()
+      // main dot
+      ctx.beginPath()
+      ctx.arc(cx, cy, 7, 0, Math.PI * 2)
+      ctx.fillStyle = "#FF2222"
+      ctx.fill()
+      // white center
+      ctx.beginPath()
+      ctx.arc(cx, cy, 2.5, 0, Math.PI * 2)
+      ctx.fillStyle = "rgba(255,255,255,0.9)"
+      ctx.fill()
+
+      // Confidence label
+      const label = `${Math.round(pred.confidence * 100)}%`
+      ctx.font = "bold 13px Arial"
+      const tw = ctx.measureText(label).width
+      ctx.fillStyle = "rgba(200,0,0,0.85)"
+      ctx.fillRect(cx - tw / 2 - 4, cy - hh - 20, tw + 8, 18)
+      ctx.fillStyle = "#fff"
+      ctx.textAlign = "center"
+      ctx.fillText(label, cx, cy - hh - 6)
+      ctx.textAlign = "left"
+    })
   }
 
   const downloadImage = () => {
-    if (canvasRef.current) {
-      const link = document.createElement("a")
-      link.download = "derion-analysis.png"
-      link.href = canvasRef.current.toDataURL("image/png")
-      link.click()
-    }
+    if (!canvasRef.current) return
+    const a = document.createElement("a")
+    a.download = "derion-analysis.png"
+    a.href = canvasRef.current.toDataURL("image/png")
+    a.click()
   }
 
-  const getSeverityColor = () => {
-    switch (results.severity) {
-      case "mild":
-        return "bg-green-500"
-      case "moderate":
-        return "bg-amber-500"
-      case "severe":
-        return "bg-red-500"
-      default:
-        return "bg-gray-500"
-    }
-  }
+  const total = results.predictions.length
 
-  const getSeverityPercentage = () => {
-    switch (results.severity) {
-      case "mild":
-        return 30
-      case "moderate":
-        return 60
-      case "severe":
-        return 90
-      default:
-        return 0
-    }
-  }
+  const severityPct = { mild: 30, moderate: 60, severe: 90 }[results.severity]
+  const severityColor = { mild: "bg-green-500", moderate: "bg-amber-500", severe: "bg-red-500" }[results.severity]
 
-  const acneCounts = results.predictions.reduce(
-    (acc, pred) => {
-      acc[pred.class] = (acc[pred.class] || 0) + 1
-      return acc
-    },
-    {} as Record<string, number>,
-  )
+  const acneCounts = results.predictions.reduce((acc, p) => {
+    acc[p.class] = (acc[p.class] || 0) + 1
+    return acc
+  }, {} as Record<string, number>)
 
-  const content = {
+  const t = {
     en: {
-      title: "Analysis Results",
-      detected: "We've detected",
-      lesions: "acne lesions on your skin.",
-      severityLevel: "Severity Level:",
-      acneTypesDetected: "Acne Types Detected:",
-      nextSteps: "Next Steps:",
-      chatWithDermAI: "Chat with DermAI",
-      getProductRecommendations: "Get Product Recommendations",
-      explanation: "Explanation",
-      quickTips: "Quick Tips",
-      warnings: "Warnings",
-      understandingResults: "Understanding Your Results",
-      analyzed: "Our AI has analyzed your skin and detected",
-      acne: "acne. Here's what that means:",
-      severity: "Severity:",
-      acneTypesExplained: "Acne Types Explained:",
+      title: "Analysis Results", detected: "Detected", lesions: "acne lesions",
+      severity: "Severity:", types: "Acne Types:", next: "Next Steps:",
+      chat: "Chat with DermAI", products: "Product Recommendations",
+      explain: "Explanation", tips: "Quick Tips", warn: "Warnings",
     },
     uz: {
-      title: "Tahlil Natijalari",
-      detected: "Biz aniqladik",
-      lesions: "teringizdagi akne shikastlanishlari.",
-      severityLevel: "Og'irlik darajasi:",
-      acneTypesDetected: "Aniqlangan akne turlari:",
-      nextSteps: "Keyingi qadamlar:",
-      chatWithDermAI: "DermAI bilan suhbatlashing",
-      getProductRecommendations: "Mahsulot tavsiyalarini oling",
-      explanation: "Tushuntirish",
-      quickTips: "Tezkor maslahatlar",
-      warnings: "Ogohlantirishlar",
-      understandingResults: "Natijalaringizni tushunish",
-      analyzed: "Bizning AI teringizni tahlil qildi va aniqladi",
-      acne: "akne. Mana bu nimani anglatadi:",
-      severity: "Og'irlik darajasi:",
-      acneTypesExplained: "Akne turlari tushuntirilgan:",
+      title: "Tahlil Natijalari", detected: "Aniqlandi", lesions: "akne shikastlanishi",
+      severity: "Og'irlik:", types: "Akne turlari:", next: "Keyingi qadamlar:",
+      chat: "DermAI bilan suhbatlash", products: "Mahsulot tavsiyalari",
+      explain: "Tushuntirish", tips: "Maslahatlar", warn: "Ogohlantirishlar",
     },
-  }
-
-  const currentContent = content[language]
+  }[language]
 
   return (
     <div className="space-y-8">
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
         <Card className="border-2 border-purple-200 shadow-lg overflow-hidden">
-          <CardContent className="p-6">
-            <div className="flex flex-col md:flex-row gap-8">
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex flex-col md:flex-row gap-6 md:gap-8">
+
+              {/* Canvas with detection */}
               <div className="md:w-1/2">
-                <div className="relative bg-gray-100 rounded-lg overflow-hidden">
-                  <canvas ref={canvasRef} className="w-full h-auto"></canvas>
-                  <div className="absolute top-4 right-4 flex space-x-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="bg-white/80 backdrop-blur-sm"
-                      onClick={() => setShowDots(!showDots)}
-                    >
-                      {showDots ? "Hide" : "Show"} Dots
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="bg-white/80 backdrop-blur-sm"
-                      onClick={downloadImage}
-                    >
-                      <Download className="h-4 w-4" />
-                    </Button>
+                <div className="relative bg-gray-100 rounded-xl overflow-hidden">
+                  <canvas ref={canvasRef} className="w-full h-auto rounded-xl" />
+                  <div className="absolute top-3 left-3 bg-red-600/80 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">
+                    <span className="w-2 h-2 bg-white rounded-full animate-pulse" />
+                    {total} {language === "en" ? "acne detected" : "akne aniqlandi"}
                   </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="absolute top-3 right-3 bg-white/80 backdrop-blur-sm"
+                    onClick={downloadImage}
+                  >
+                    <Download className="h-4 w-4" />
+                  </Button>
                 </div>
               </div>
 
-              <div className="md:w-1/2 space-y-6">
+              {/* Stats */}
+              <div className="md:w-1/2 space-y-5">
                 <div>
-                  <h2 className="text-2xl font-bold text-purple-900 mb-2">{currentContent.title}</h2>
-                  <p className="text-gray-700">
-                    {currentContent.detected} {results.predictions.length} {currentContent.lesions}
+                  <h2 className="text-xl sm:text-2xl font-bold text-purple-900 mb-1">{t.title}</h2>
+                  <p className="text-gray-600 text-sm sm:text-base">
+                    {t.detected} <span className="font-bold text-red-600">{total}</span> {t.lesions}
                   </p>
                 </div>
 
                 <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="font-medium">{currentContent.severityLevel}</span>
-                    <span className="font-bold capitalize">{results.severity}</span>
+                  <div className="flex justify-between text-sm font-medium">
+                    <span>{t.severity}</span>
+                    <span className="capitalize font-bold">{results.severity}</span>
                   </div>
-                  <Progress value={getSeverityPercentage()} className="h-2" indicatorClassName={getSeverityColor()} />
+                  <Progress value={severityPct} className="h-2.5" indicatorClassName={severityColor} />
                 </div>
 
                 <div>
-                  <h3 className="font-medium mb-2">{currentContent.acneTypesDetected}</h3>
-                  <div className="grid grid-cols-1 gap-2">
-                    {Object.entries(results.percentages).map(([type, percentage]) => (
-                      <div key={type} className="flex items-center justify-between p-2 rounded-md bg-purple-50">
-                        <div className="flex items-center">
-                          <div
-                            className="w-4 h-4 rounded-full mr-2"
-                            style={{
-                              backgroundColor: acneTypeColors[type as keyof typeof acneTypeColors] || "#ff0000",
-                            }}
-                          ></div>
-                          <span className="capitalize">{type}:</span>
+                  <h3 className="text-sm font-semibold mb-2 text-gray-700">{t.types}</h3>
+                  <div className="space-y-2">
+                    {Object.entries(acneCounts).map(([type, count]) => (
+                      <div key={type} className="flex items-center justify-between px-3 py-2 rounded-lg bg-red-50 border border-red-100">
+                        <div className="flex items-center gap-2">
+                          <div className="w-3.5 h-3.5 rounded-full" style={{ backgroundColor: acneTypeColors[type] || "#FF2222" }} />
+                          <span className="capitalize text-sm font-medium">{type}</span>
                         </div>
-                        <div className="flex items-center">
-                          <span className="font-bold mr-2">{acneCounts[type] || 0}</span>
-                          <span className="text-sm text-gray-500">({percentage}%)</span>
-                        </div>
+                        <span className="text-sm font-bold text-red-700">{count} ({results.percentages[type] ?? 0}%)</span>
                       </div>
                     ))}
                   </div>
                 </div>
 
-                <div className="pt-4 border-t border-gray-200">
-                  <h3 className="font-medium mb-3">{currentContent.nextSteps}</h3>
-                  <div className="space-y-2">
-                    <NextStepButton
-                      icon={<MessageCircle className="h-4 w-4" />}
-                      text={currentContent.chatWithDermAI}
-                      href="/chat"
-                    />
-                    <NextStepButton
-                      icon={<ShoppingBag className="h-4 w-4" />}
-                      text={currentContent.getProductRecommendations}
-                      href="/recommendations"
-                    />
-                  </div>
+                <div className="pt-3 border-t border-gray-100 space-y-2">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t.next}</p>
+                  <NextBtn icon={<MessageCircle className="h-4 w-4" />} text={t.chat} href="/chat" />
+                  <NextBtn icon={<ShoppingBag className="h-4 w-4" />} text={t.products} href="/recommendations" />
                 </div>
               </div>
             </div>
@@ -288,240 +219,88 @@ export function AnalysisResults({ results, image }: AnalysisResultsProps) {
 
       <Tabs defaultValue="explanation" className="max-w-3xl mx-auto">
         <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="explanation">{currentContent.explanation}</TabsTrigger>
-          <TabsTrigger value="recommendations">{currentContent.quickTips}</TabsTrigger>
-          <TabsTrigger value="warnings">{currentContent.warnings}</TabsTrigger>
+          <TabsTrigger value="explanation">{t.explain}</TabsTrigger>
+          <TabsTrigger value="tips">{t.tips}</TabsTrigger>
+          <TabsTrigger value="warnings">{t.warn}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="explanation" className="mt-4">
-          <Card>
-            <CardContent className="pt-6">
-              <h3 className="text-lg font-medium mb-3 text-purple-900">{currentContent.understandingResults}</h3>
-              <p className="text-gray-700 mb-4">
-                {currentContent.analyzed} {results.severity} {currentContent.acne}
+          <Card><CardContent className="pt-5 space-y-4">
+            <div className="bg-purple-50 p-4 rounded-lg">
+              <p className="font-semibold text-purple-900 mb-1 capitalize">{results.severity} {language === "en" ? "severity" : "daraja"}</p>
+              <p className="text-sm text-gray-700">
+                {results.severity === "mild" && (language === "en" ? "A few scattered lesions. Easy to treat with OTC products." : "Bir nechta tarqalgan dog'lar. Apteka vositalari bilan davolash oson.")}
+                {results.severity === "moderate" && (language === "en" ? "Multiple lesions across face. May need combined treatment." : "Yuzda bir nechta shikastlanish. Kombinatsiyali davolash kerak bo'lishi mumkin.")}
+                {results.severity === "severe" && (language === "en" ? "Numerous lesions. Consult a dermatologist for prescription treatment." : "Ko'p shikastlanish. Dermatologga murojaat qiling.")}
               </p>
-
-              <div className="space-y-4">
-                <div className="bg-purple-50 p-4 rounded-lg">
-                  <h4 className="font-medium text-purple-900 mb-1">
-                    {currentContent.severity} {results.severity}
-                  </h4>
-                  <p className="text-sm text-gray-700">
-                    {results.severity === "mild" &&
-                      (language === "en"
-                        ? "You have a few scattered lesions. This is typically easy to treat with over-the-counter products."
-                        : "Sizda bir nechta tarqalgan shikastlanishlar bor. Bu odatda aptekada sotiladigan mahsulotlar bilan davolash oson.")}
-                    {results.severity === "moderate" &&
-                      (language === "en"
-                        ? "You have multiple lesions across your face. This may require a combination of treatments."
-                        : "Yuzingizda bir nechta shikastlanishlar bor. Bu davolashning kombinatsiyasini talab qilishi mumkin.")}
-                    {results.severity === "severe" &&
-                      (language === "en"
-                        ? "You have numerous inflamed lesions. Consider consulting a dermatologist for prescription treatments."
-                        : "Sizda ko'plab yallig'langan shikastlanishlar bor. Retsept bilan beriladigan davolash uchun dermatologga murojaat qilishni o'ylab ko'ring.")}
-                  </p>
-                </div>
-
-                <div>
-                  <h4 className="font-medium text-purple-900 mb-1">{currentContent.acneTypesExplained}</h4>
-                  <ul className="space-y-2 text-sm text-gray-700">
-                    {Object.entries(acneCounts).map(([type, count]) => (
-                      <li key={type} className="flex items-start gap-2">
-                        <div
-                          className="w-4 h-4 rounded-full mt-1 flex-shrink-0"
-                          style={{ backgroundColor: acneTypeColors[type as keyof typeof acneTypeColors] || "#ff0000" }}
-                        ></div>
-                        <div>
-                          <span className="font-bold capitalize">
-                            {type} ({count}):
-                          </span>{" "}
-                          <span>
-                            {acneTypeDescriptions[type as keyof typeof acneTypeDescriptions] || "Acne lesion"}
-                          </span>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+            </div>
+            <ul className="space-y-2 text-sm text-gray-700">
+              {Object.entries(acneCounts).map(([type, count]) => (
+                <li key={type} className="flex items-start gap-2">
+                  <div className="w-3.5 h-3.5 rounded-full mt-1 flex-shrink-0" style={{ backgroundColor: acneTypeColors[type] || "#FF2222" }} />
+                  <span><b className="capitalize">{type} ({count}):</b> {acneTypeDescriptions[type] || "Acne lesion"}</span>
+                </li>
+              ))}
+            </ul>
+          </CardContent></Card>
         </TabsContent>
 
-        <TabsContent value="recommendations" className="mt-4">
-          <Card>
-            <CardContent className="pt-6">
-              <h3 className="text-lg font-medium mb-3 text-purple-900">
-                {language === "en" ? "Quick Treatment Tips" : "Tezkor davolash maslahatlari"}
-              </h3>
-              <div className="space-y-4">
-                <div className="bg-green-50 p-4 rounded-lg">
-                  <h4 className="font-medium text-green-800 mb-1">
-                    {language === "en" ? "Daily Skincare Routine" : "Kundalik teri parvarishi"}
-                  </h4>
-                  <ul className="space-y-1 text-sm text-gray-700">
-                    <li>
-                      •{" "}
-                      {language === "en"
-                        ? "Cleanse twice daily with a gentle, pH-balanced cleanser"
-                        : "Kuniga ikki marta yumshoq, pH muvozanatlangan tozalovchi vosita bilan tozalang"}
-                    </li>
-                    <li>
-                      •{" "}
-                      {language === "en"
-                        ? "Use non-comedogenic moisturizer to maintain skin barrier"
-                        : "Teri to'sig'ini saqlash uchun non-komedogen namlovchidan foydalaning"}
-                    </li>
-                    <li>
-                      •{" "}
-                      {language === "en"
-                        ? "Apply SPF 30+ sunscreen every morning"
-                        : "Har kuni ertalab SPF 30+ quyoshdan himoya kremini qo'llang"}
-                    </li>
-                    <li>
-                      •{" "}
-                      {language === "en"
-                        ? "Avoid touching your face throughout the day"
-                        : "Kun davomida yuzingizga tegishdan saqlaning"}
-                    </li>
-                  </ul>
-                </div>
-
-                <div className="bg-blue-50 p-4 rounded-lg">
-                  <h4 className="font-medium text-blue-800 mb-1">
-                    {language === "en" ? "Recommended Ingredients" : "Tavsiya etilgan tarkibiy qismlar"}
-                  </h4>
-                  <ul className="space-y-1 text-sm text-gray-700">
-                    <li>
-                      •{" "}
-                      {language === "en"
-                        ? "Salicylic Acid: Unclogs pores and reduces inflammation"
-                        : "Salitsil kislotasi: Teshiklarni ochadi va yallig'lanishni kamaytiradi"}
-                    </li>
-                    <li>
-                      •{" "}
-                      {language === "en"
-                        ? "Benzoyl Peroxide: Kills acne-causing bacteria"
-                        : "Benzoil peroksid: Akne keltirib chiqaruvchi bakteriyalarni o'ldiradi"}
-                    </li>
-                    <li>
-                      •{" "}
-                      {language === "en"
-                        ? "Niacinamide: Reduces inflammation and oil production"
-                        : "Niacinamide: Yallig'lanishni va yog' ishlab chiqarishni kamaytiradi"}
-                    </li>
-                    <li>
-                      •{" "}
-                      {language === "en"
-                        ? "Retinoids: Prevents clogged pores and promotes cell turnover"
-                        : "Retinoidlar: Teshiklarning tiqilib qolishini oldini oladi va hujayralarning yangilanishini rag'batlantiradi"}
-                    </li>
-                  </ul>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        <TabsContent value="tips" className="mt-4">
+          <Card><CardContent className="pt-5 space-y-3">
+            <div className="bg-green-50 p-4 rounded-lg">
+              <p className="font-medium text-green-800 mb-2">{language === "en" ? "Daily Skincare" : "Kundalik parvarish"}</p>
+              <ul className="space-y-1 text-sm text-gray-700">
+                <li>• {language === "en" ? "Cleanse twice daily with gentle pH-balanced cleanser" : "Kuniga 2 marta yumshoq tozalovchi bilan yuving"}</li>
+                <li>• {language === "en" ? "Use non-comedogenic moisturizer" : "Non-komedogen namlovchi ishlating"}</li>
+                <li>• {language === "en" ? "Apply SPF 30+ every morning" : "Har kuni SPF 30+ quyoshdan himoya qo'llang"}</li>
+                <li>• {language === "en" ? "Don't touch your face" : "Yuzingizga qo'l tegizmang"}</li>
+              </ul>
+            </div>
+            <div className="bg-blue-50 p-4 rounded-lg">
+              <p className="font-medium text-blue-800 mb-2">{language === "en" ? "Key Ingredients" : "Asosiy tarkiblar"}</p>
+              <ul className="space-y-1 text-sm text-gray-700">
+                <li>• Salicylic Acid — {language === "en" ? "unclogs pores" : "g'ovaklarni tozalaydi"}</li>
+                <li>• Niacinamide — {language === "en" ? "reduces redness" : "qizillikni kamaytiradi"}</li>
+                <li>• Benzoyl Peroxide — {language === "en" ? "kills bacteria" : "bakteriyalarni o'ldiradi"}</li>
+              </ul>
+            </div>
+          </CardContent></Card>
         </TabsContent>
 
         <TabsContent value="warnings" className="mt-4">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-2 mb-3">
-                <AlertTriangle className="h-5 w-5 text-amber-500" />
-                <h3 className="text-lg font-medium text-purple-900">
-                  {language === "en" ? "Important Warnings" : "Muhim ogohlantirishlar"}
-                </h3>
-              </div>
-
-              <div className="space-y-4">
-                <div className="bg-red-50 p-4 rounded-lg">
-                  <h4 className="font-medium text-red-800 mb-1">
-                    {language === "en" ? "What NOT to Do" : "Nima qilmaslik kerak"}
-                  </h4>
-                  <ul className="space-y-1 text-sm text-gray-700">
-                    <li>
-                      •{" "}
-                      {language === "en"
-                        ? "Don't pick, pop, or squeeze pimples (can lead to scarring)"
-                        : "Husnbuzarlarni tirmamang, siqmang (chandiq qolishiga olib kelishi mumkin)"}
-                    </li>
-                    <li>
-                      •{" "}
-                      {language === "en"
-                        ? "Avoid harsh scrubs or excessive exfoliation"
-                        : "Qattiq skrablar yoki haddan tashqari exfoliatsiyadan saqlaning"}
-                    </li>
-                    <li>
-                      •{" "}
-                      {language === "en"
-                        ? "Don't apply toothpaste, lemon juice, or DIY remedies"
-                        : "Tish pastasi, limon sharbati yoki uy sharoitida tayyorlangan vositalarni qo'llamang"}
-                    </li>
-                    <li>
-                      •{" "}
-                      {language === "en"
-                        ? "Avoid using multiple active ingredients at once"
-                        : "Bir vaqtning o'zida bir nechta faol tarkibiy qismlardan foydalanishdan saqlaning"}
-                    </li>
-                  </ul>
-                </div>
-
-                <div className="bg-amber-50 p-4 rounded-lg">
-                  <h4 className="font-medium text-amber-800 mb-1">
-                    {language === "en" ? "When to See a Dermatologist" : "Qachon dermatologga murojaat qilish kerak"}
-                  </h4>
-                  <p className="text-sm text-gray-700 mb-2">
-                    {language === "en"
-                      ? "Consider consulting a dermatologist if:"
-                      : "Quyidagi hollarda dermatologga murojaat qilishni o'ylab ko'ring:"}
-                  </p>
-                  <ul className="space-y-1 text-sm text-gray-700">
-                    <li>
-                      • {language === "en" ? "Your acne is severe or cystic" : "Akneingiz og'ir yoki kistali bo'lsa"}
-                    </li>
-                    <li>
-                      •{" "}
-                      {language === "en"
-                        ? "Over-the-counter treatments haven't worked after 8-12 weeks"
-                        : "Aptekada sotiladigan davolash vositalari 8-12 hafta davomida yordam bermasa"}
-                    </li>
-                    <li>
-                      •{" "}
-                      {language === "en"
-                        ? "You're developing scars from your acne"
-                        : "Aknedan chandiqlar paydo bo'layotgan bo'lsa"}
-                    </li>
-                    <li>
-                      •{" "}
-                      {language === "en"
-                        ? "Your acne is causing significant psychological distress"
-                        : "Akneingiz sezilarli psixologik stress keltirib chiqarayotgan bo'lsa"}
-                    </li>
-                  </ul>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <Card><CardContent className="pt-5 space-y-3">
+            <div className="flex items-center gap-2 mb-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              <h3 className="font-semibold text-purple-900">{language === "en" ? "Important Warnings" : "Muhim ogohlantirishlar"}</h3>
+            </div>
+            <div className="bg-red-50 p-4 rounded-lg">
+              <p className="font-medium text-red-800 mb-2">{language === "en" ? "Don't do:" : "Qilmang:"}</p>
+              <ul className="space-y-1 text-sm text-gray-700">
+                <li>• {language === "en" ? "Don't pop or squeeze pimples" : "Husnbuzarlarni siqmang"}</li>
+                <li>• {language === "en" ? "Avoid harsh scrubs" : "Qattiq skrablardan saqlaning"}</li>
+                <li>• {language === "en" ? "No DIY remedies (toothpaste, lemon)" : "Uy vositalarini ishlatmang (tish pastasi, limon)"}</li>
+              </ul>
+            </div>
+            <div className="bg-amber-50 p-4 rounded-lg">
+              <p className="font-medium text-amber-800 mb-1">{language === "en" ? "See a dermatologist if:" : "Dermatologga boring agar:"}</p>
+              <ul className="space-y-1 text-sm text-gray-700">
+                <li>• {language === "en" ? "Acne is severe or cystic" : "Akne og'ir yoki kistali bo'lsa"}</li>
+                <li>• {language === "en" ? "OTC treatments fail after 8 weeks" : "8 haftada apteka vositalari yordam bermasa"}</li>
+                <li>• {language === "en" ? "Scarring develops" : "Chandiqlar paydo bo'lsa"}</li>
+              </ul>
+            </div>
+          </CardContent></Card>
         </TabsContent>
       </Tabs>
     </div>
   )
 }
 
-interface NextStepButtonProps {
-  icon: React.ReactNode
-  text: string
-  href: string
-}
-
-function NextStepButton({ icon, text, href }: NextStepButtonProps) {
+function NextBtn({ icon, text, href }: { icon: React.ReactNode; text: string; href: string }) {
   return (
     <Button asChild variant="outline" className="w-full justify-between hover:bg-purple-50 border-purple-200">
       <Link href={href}>
-        <div className="flex items-center">
-          {icon}
-          <span className="ml-2">{text}</span>
-        </div>
+        <div className="flex items-center gap-2">{icon}<span>{text}</span></div>
         <ChevronRight className="h-4 w-4" />
       </Link>
     </Button>

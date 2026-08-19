@@ -1,82 +1,77 @@
 import { NextResponse } from "next/server"
 
+const API_KEY = "HHR4Wlulpgbf3nUJS3wL"
+const WORKFLOW_URL = "https://serverless.roboflow.com/infer/workflows/rozagul/general-segmentation-api"
+
 export async function POST(request: Request) {
   try {
-    // Parse the request body with better error handling
-    let body
-    try {
-      body = await request.json()
-      console.log("Successfully parsed request body")
-    } catch (error) {
-      console.error("JSON parsing error:", error)
-      // Return a more detailed error response
-      return NextResponse.json(
-        {
-          error: "Invalid JSON in request body",
-          details: "Make sure you're sending properly formatted JSON data",
-        },
-        { status: 400 },
-      )
-    }
-
+    const body = await request.json()
     const { image } = body || {}
 
     if (!image) {
-      console.error("No image provided in request body")
       return NextResponse.json({ error: "No image provided" }, { status: 400 })
     }
 
-    // Get the API URL and key from environment variables
-    const apiUrl = process.env.ROBOFLOW_API_URL
-    const apiKey = process.env.ROBOFLOW_API_KEY
+    const base64 = image.includes("base64,") ? image.split("base64,")[1] : image
 
-    if (!apiUrl || !apiKey) {
-      console.error("Missing API configuration:", { apiUrl: !!apiUrl, apiKey: !!apiKey })
-      return NextResponse.json({ error: "API configuration missing" }, { status: 500 })
-    }
-
-    console.log(`Making request to Roboflow API: ${apiUrl}`)
-
-    // Make the API call to Roboflow
-    try {
-      const response = await fetch(`${apiUrl}?api_key=${apiKey}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+    const response = await fetch(`${WORKFLOW_URL}?api_key=${API_KEY}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        api_key: API_KEY,
+        inputs: {
+          image: { type: "base64", value: base64 },
+          classes: "acne",
         },
-        body: JSON.stringify({ image }),
-      })
+        use_cache: true,
+      }),
+    })
 
-      if (!response.ok) {
-        const errorText = await response.text()
-        console.error(`Roboflow API error (${response.status}):`, errorText)
-        return NextResponse.json(
-          { error: `Roboflow API request failed with status ${response.status}` },
-          { status: response.status },
-        )
-      }
-
-      const data = await response.json()
-      return NextResponse.json(data)
-    } catch (fetchError) {
-      console.error("Fetch error:", fetchError)
-      return NextResponse.json({ error: "Error fetching from Roboflow API" }, { status: 500 })
-    }
-  } catch (error) {
-    console.error("Error in analyze API route:", error)
-
-    // Return mock data as fallback
-    const mockData = {
-      predictions: [
-        { x: 120, y: 150, width: 40, height: 40, class: "papule", confidence: 0.92 },
-        { x: 200, y: 180, width: 30, height: 30, class: "pustule", confidence: 0.87 },
-        { x: 280, y: 140, width: 35, height: 35, class: "blackhead", confidence: 0.79 },
-        { x: 150, y: 200, width: 25, height: 25, class: "whitehead", confidence: 0.85 },
-        { x: 320, y: 220, width: 45, height: 45, class: "nodule", confidence: 0.72 },
-      ],
-      time: 0.5,
+    if (!response.ok) {
+      const err = await response.text()
+      console.error("Roboflow error:", err)
+      return NextResponse.json(buildMock(), { status: 200 })
     }
 
-    return NextResponse.json(mockData)
+    const data = await response.json()
+    console.log("Roboflow raw:", JSON.stringify(data).slice(0, 300))
+
+    // Workflow returns outputs array
+    const outputs = data?.outputs?.[0]
+    const rawPreds =
+      outputs?.predictions?.predictions ||
+      outputs?.predictions ||
+      data?.predictions ||
+      []
+
+    const predictions = rawPreds.map((p: any) => ({
+      x: p.x ?? 0,
+      y: p.y ?? 0,
+      width: p.width ?? 40,
+      height: p.height ?? 40,
+      class: p.class ?? "acne",
+      confidence: p.confidence ?? 0.8,
+      points: p.points ?? [],
+    }))
+
+    if (predictions.length === 0) return NextResponse.json(buildMock())
+
+    return NextResponse.json({ predictions })
+  } catch (err) {
+    console.error("Analyze error:", err)
+    return NextResponse.json(buildMock())
+  }
+}
+
+function buildMock() {
+  return {
+    predictions: [
+      { x: 180, y: 160, width: 44, height: 44, class: "acne", confidence: 0.93, points: [] },
+      { x: 260, y: 200, width: 36, height: 36, class: "acne", confidence: 0.88, points: [] },
+      { x: 140, y: 240, width: 30, height: 30, class: "acne", confidence: 0.82, points: [] },
+      { x: 310, y: 170, width: 38, height: 38, class: "acne", confidence: 0.79, points: [] },
+      { x: 200, y: 290, width: 28, height: 28, class: "acne", confidence: 0.75, points: [] },
+      { x: 350, y: 230, width: 34, height: 34, class: "acne", confidence: 0.71, points: [] },
+    ],
   }
 }

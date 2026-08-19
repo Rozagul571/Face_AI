@@ -198,17 +198,19 @@ export function HeroSection() {
             >
               <div className="w-full h-[280px] sm:h-[380px] md:h-[480px] lg:h-[600px] rounded-2xl md:rounded-3xl overflow-hidden shadow-2xl relative">
                 <video ref={videoRef} className="w-full h-full object-cover" autoPlay loop muted playsInline>
-                  <source src="/ACNE.mp4" type="video/mp4" />
+                  <source src="/derion.mp4" type="video/mp4" />
                 </video>
 
                 <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-purple-900/80 to-transparent p-4 md:p-8">
                   <div className="bg-white/90 backdrop-blur-sm rounded-xl p-3 sm:p-6 max-w-sm mx-auto transform hover:scale-105 transition-transform duration-300">
                     <div className="flex items-start gap-2 sm:gap-3 mb-2 sm:mb-3">
-                      <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-full bg-gradient-to-r from-pink-500 to-purple-600 flex items-center justify-center text-white flex-shrink-0">
-                        <Sparkles size={16} />
-                      </div>
+                      <img
+                        src="/derion-logo.jpg"
+                        alt="Derion AI"
+                        className="w-10 h-10 sm:w-14 sm:h-14 rounded-full object-cover flex-shrink-0 border-2 border-purple-200"
+                      />
                       <div>
-                        <h3 className="font-bold text-base sm:text-xl text-purple-900">AI ButyFace</h3>
+                        <h3 className="font-bold text-base sm:text-xl text-purple-900">Derion AI</h3>
                         <p className="text-xs sm:text-md text-gray-700">Your skin analysis assistant</p>
                       </div>
                     </div>

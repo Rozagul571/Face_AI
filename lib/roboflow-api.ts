@@ -1,5 +1,3 @@
-// This file contains the implementation for the Roboflow API integration
-
 export interface AcnePrediction {
   x: number
   y: number
@@ -7,135 +5,63 @@ export interface AcnePrediction {
   height: number
   class: string
   confidence: number
+  points?: Array<{ x: number; y: number }>
 }
 
 export interface AnalysisResult {
   predictions: AcnePrediction[]
   severity: "mild" | "moderate" | "severe"
-  percentages: {
-    [key: string]: number
-  }
+  percentages: { [key: string]: number }
 }
 
 export async function analyzeImage(imageData: string): Promise<AnalysisResult> {
-  try {
-    console.log("Starting image analysis with Roboflow API")
+  const base64Data = imageData.includes("base64,") ? imageData.split("base64,")[1] : imageData
 
-    // Remove the data:image/jpeg;base64, part if present
-    const base64Data = imageData.includes("base64,") ? imageData.split("base64,")[1] : imageData
+  const response = await fetch("/api/analyze", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ image: base64Data }),
+  })
 
-    // Ensure we're sending valid JSON
-    const requestBody = JSON.stringify({
-      image: base64Data,
-    })
+  if (!response.ok) throw new Error(`API error ${response.status}`)
 
-    console.log("Sending request to analyze API")
+  const data = await response.json()
+  const predictions: AcnePrediction[] = data.predictions || []
 
-    // Call our own API route which will handle the Roboflow API call
-    const response = await fetch("/api/analyze", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: requestBody,
-    })
+  const counts: Record<string, number> = {}
+  predictions.forEach((p) => { counts[p.class] = (counts[p.class] || 0) + 1 })
 
-    console.log(`API response status: ${response.status}`)
+  const total = predictions.length
+  const percentages: Record<string, number> = {}
+  Object.keys(counts).forEach((k) => { percentages[k] = Math.round((counts[k] / total) * 100) })
 
-    if (!response.ok) {
-      const errorText = await response.text()
-      console.error(`API error: ${errorText}`)
-      throw new Error(`API request failed with status ${response.status}`)
-    }
+  let severity: "mild" | "moderate" | "severe" = "mild"
+  if (total > 8) severity = "severe"
+  else if (total > 4) severity = "moderate"
 
-    const data = await response.json()
-    console.log("API response received:", JSON.stringify(data).substring(0, 200) + "...")
-
-    const predictions = data.predictions || []
-
-    // Calculate percentages
-    const counts: { [key: string]: number } = {}
-    predictions.forEach((pred: AcnePrediction) => {
-      counts[pred.class] = (counts[pred.class] || 0) + 1
-    })
-
-    const total = predictions.length
-    const percentages: { [key: string]: number } = {}
-
-    if (total > 0) {
-      Object.keys(counts).forEach((key) => {
-        percentages[key] = Math.round((counts[key] / total) * 100)
-      })
-    }
-
-    // Determine severity based on types and counts
-    let severity: "mild" | "moderate" | "severe" = "mild"
-
-    if (counts["nodule"] > 0 || counts["cyst"] > 0 || total > 8) {
-      severity = "severe"
-    } else if (counts["pustule"] > 1 || total > 4) {
-      severity = "moderate"
-    }
-
-    return {
-      predictions,
-      severity,
-      percentages,
-    }
-  } catch (error) {
-    console.error("Error analyzing image:", error)
-
-    // Fallback to mock data if API call fails
-    console.log("Falling back to mock data")
-
-    const mockPredictions = [
-      { x: 120, y: 150, width: 40, height: 40, class: "papule", confidence: 0.92 },
-      { x: 200, y: 180, width: 30, height: 30, class: "pustule", confidence: 0.87 },
-      { x: 280, y: 140, width: 35, height: 35, class: "blackhead", confidence: 0.79 },
-      { x: 150, y: 200, width: 25, height: 25, class: "whitehead", confidence: 0.85 },
-      { x: 320, y: 220, width: 45, height: 45, class: "nodule", confidence: 0.72 },
-    ]
-
-    // Calculate percentages
-    const counts: { [key: string]: number } = {}
-    mockPredictions.forEach((pred) => {
-      counts[pred.class] = (counts[pred.class] || 0) + 1
-    })
-
-    const total = mockPredictions.length
-    const percentages: { [key: string]: number } = {}
-
-    Object.keys(counts).forEach((key) => {
-      percentages[key] = Math.round((counts[key] / total) * 100)
-    })
-
-    return {
-      predictions: mockPredictions,
-      severity: "moderate",
-      percentages,
-    }
-  }
+  return { predictions, severity, percentages }
 }
 
-export const acneTypeColors = {
-  blackhead: "#333333", // Dark gray/black
-  whitehead: "#FFFFFF", // White
-  papule: "#FF6B6B", // Red
-  pustule: "#FFCC00", // Yellow
-  nodule: "#9C27B0", // Purple
-  cyst: "#8E44AD", // Deep purple
+export const acneTypeColors: Record<string, string> = {
+  acne: "#FF2222",
+  blackhead: "#333333",
+  whitehead: "#FFEEEE",
+  papule: "#FF6B6B",
+  pustule: "#FFAA00",
+  nodule: "#9C27B0",
+  cyst: "#8E44AD",
 }
 
-export const acneTypeDescriptions = {
-  blackhead: "Open comedones that appear as small dark spots due to oxidation",
-  whitehead: "Closed comedones that appear as small white or flesh-colored bumps",
-  papule: "Small, raised, solid pimples that are often red and tender",
-  pustule: "Pimples containing pus that have a white or yellow center",
-  nodule: "Large, solid, painful lumps beneath the skin's surface",
-  cyst: "Deep, painful, pus-filled lesions that can cause scarring",
+export const acneTypeDescriptions: Record<string, string> = {
+  acne: "Acne lesion detected on the skin surface",
+  blackhead: "Open comedones appearing as small dark spots",
+  whitehead: "Closed comedones appearing as small white bumps",
+  papule: "Small raised solid pimples, often red and tender",
+  pustule: "Pimples containing pus with a white or yellow center",
+  nodule: "Large solid painful lumps beneath the skin surface",
+  cyst: "Deep painful pus-filled lesions that can cause scarring",
 }
 
-// Export Korean products data
 export const koreanProducts = [
   {
     id: "1",
@@ -184,7 +110,7 @@ export const koreanProducts = [
   {
     id: "5",
     name: "Some By Mi AHA-BHA-PHA 30 Days Miracle Toner",
-    description: "Contains AHA, BHA, and PHA to exfoliate and treat acne. Also contains tea tree extract.",
+    description: "Contains AHA, BHA, and PHA to exfoliate and treat acne.",
     price: 16.0,
     image: "https://koreanskincare.nl/cdn/shop/files/sbm_miracletoner_01.jpg?v=1712047447",
     category: "Toner",
@@ -197,22 +123,10 @@ export const koreanProducts = [
     name: "Dr.Jart+ Cicapair Tiger Grass Color Correcting Treatment SPF 30",
     description: "Color-correcting treatment that neutralizes redness and provides sun protection.",
     price: 52.0,
-    image:
-      "https://oprahdailyprod.vtexassets.com/unsafe/1440x0/center/middle/filters:quality(85)/https%3A%2F%2Foprahdailyprod.vtexassets.com%2Farquivos%2Fids%2F499493%2Fimage_2.jpg%3Fv%3D638812818751770000",
+    image: "https://oprahdailyprod.vtexassets.com/unsafe/1440x0/center/middle/filters:quality(85)/https%3A%2F%2Foprahdailyprod.vtexassets.com%2Farquivos%2Fids%2F499493%2Fimage_2.jpg%3Fv%3D638812818751770000",
     category: "Treatment",
     ingredients: ["Centella Asiatica", "Mineral Sunscreen", "Tiger Grass"],
     rating: 4.7,
     forProblems: ["Redness", "Inflammation", "Sensitive skin", "Acne"],
-  },
-  {
-    id: "7",
-    name: "Some By Mi Snail Truecica Miracle Repair Serum",
-    description: "Repair serum with snail mucin and truecica complex for damaged skin.",
-    price: 18.0,
-    image: "https://koreanskincare.nl/cdn/shop/files/m_kr_snail_serum_01.jpg?v=1688990607",
-    category: "Serum",
-    ingredients: ["Snail Secretion Filtrate", "Truecica Complex", "Centella Asiatica"],
-    rating: 4.6,
-    forProblems: ["Acne scars", "Damaged skin", "Inflammation", "Dryness"],
   },
 ]

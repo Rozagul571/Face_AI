@@ -11,9 +11,7 @@ export function Footer() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8 mb-8">
           <div className="col-span-2 md:col-span-1 space-y-4">
             <div className="flex items-center space-x-2">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-r from-pink-500 to-purple-600 flex items-center justify-center">
-                <span className="text-white font-bold text-lg">D</span>
-              </div>
+              <img src="/derion-logo.jpg" alt="Derion AI" className="w-10 h-10 rounded-full object-cover border-2 border-purple-700" />
               <span className="font-bold text-xl">Derion AI</span>
             </div>
             <p className="text-purple-200 text-sm">
