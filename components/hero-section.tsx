@@ -198,16 +198,16 @@ export function HeroSection() {
             >
               <div className="w-full h-[280px] sm:h-[380px] md:h-[480px] lg:h-[600px] rounded-2xl md:rounded-3xl overflow-hidden shadow-2xl relative">
                 <video ref={videoRef} className="w-full h-full object-cover" autoPlay loop muted playsInline>
-                  <source src="/derion.mp4" type="video/mp4" />
+                  <source src="/assets/derion.mp4" type="video/mp4" />
                 </video>
 
                 <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-purple-900/80 to-transparent p-4 md:p-8">
                   <div className="bg-white/90 backdrop-blur-sm rounded-xl p-3 sm:p-6 max-w-sm mx-auto transform hover:scale-105 transition-transform duration-300">
                     <div className="flex items-start gap-2 sm:gap-3 mb-2 sm:mb-3">
                       <img
-                        src="/derion-logo.jpg"
+                        src="/assets/derion-logo.jpg"
                         alt="Derion AI"
-                        className="w-10 h-10 sm:w-14 sm:h-14 rounded-full object-cover flex-shrink-0 border-2 border-purple-200"
+                        className="h-12 sm:h-14 w-auto object-contain flex-shrink-0"
                       />
                       <div>
                         <h3 className="font-bold text-base sm:text-xl text-purple-900">Derion AI</h3>
